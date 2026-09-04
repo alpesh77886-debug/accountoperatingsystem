@@ -854,7 +854,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.5",
+    release: "AOS-v2.0.6",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1219,7 +1219,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.5'
+const APP_VERSION = 'v2.0.6'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -3067,9 +3067,9 @@ function renderDash(){
       </div>
     </div>
   </div>`
-}
   // Phase C is an enhancement layer. Core dashboard must remain independent.
   injectPhaseCWidgets()
+}
 
 async function refreshData(){
   showLoader('Refreshing from Supabase…')
@@ -5805,7 +5805,12 @@ _scheduleSelfTest(function selfTest(){
     return (r.overScore>50 && r.effScore>50) ? true : `over=${r.overScore} eff=${r.effScore} — should be able to be both`
   })
   wt('Unaccounted never labelled idle',()=>{
-    const src=document.documentElement.innerHTML
+    // Checks the source of the function that renders this copy, not the live
+    // DOM — the Workforce Intelligence screen (where "Unaccounted" appears)
+    // is only in the DOM after a user navigates there, so a self-test firing
+    // right after login would otherwise always fail here regardless of the
+    // actual wording.
+    const src=typeof renderWorkforce==='function' ? renderWorkforce.toString() : ''
     return (/Unaccounted/.test(src) && !/\blazy\b/i.test(src) && !/time thief/i.test(src)) ? true : 'accusatory language present'
   })
   wt('Employee cannot start session for another user',()=>{
@@ -5825,8 +5830,8 @@ _scheduleSelfTest(function selfTest(){
   wt('Daily Work is a separate session type',()=>wfiStart.toString().includes("'daily_work'")&&/Daily Work/.test(document.documentElement.innerHTML)?true:'daily_work missing')
   wt('Manager Rules are independent of work sessions',()=>{const src=document.getElementById('vManagerRules')?.innerHTML||'';return !/START DAILY WORK|PAUSE \/ PROBLEM|FINISH/i.test(src)})
   wt('Manager Rule authoring does not depend on responsibilities',()=>!mrLoadTarget.toString().includes('work_responsibilities'))
-  wt('Employee can see finished work from today',()=>wfiLoadMine.toString().includes('todaySessions')&&wfiHistoryCard.toString().includes('FINISH stops the live timer')?'PASS':'today history missing')
-  wt('Manager Rule acknowledgement binds after render',()=>renderMyRules.toString().includes("querySelectorAll('.wfi-ack-rule')")&&renderMyRules.toString().includes('.onclick=')?'PASS':'rule acknowledgement binding missing')
+  wt('Employee can see finished work from today',()=>wfiLoadMine.toString().includes('todaySessions')&&wfiHistoryCard.toString().includes('FINISH stops the live timer')?true:'today history missing')
+  wt('Manager Rule acknowledgement binds after render',()=>renderMyRules.toString().includes("querySelectorAll('.wfi-ack-rule')")&&renderMyRules.toString().includes('.onclick=')?true:'rule acknowledgement binding missing')
   wt('No per-second DB writes in ticker',()=>{
     const src=wfiStartTicker.toString()
     return (!src.includes('supa.from')&&!src.includes('insert')) ? true : 'ticker writes to DB every second'
@@ -5840,8 +5845,8 @@ _scheduleSelfTest(function selfTest(){
             &&typeof scopedTasks==='function'&&typeof isBlocked==='function') ? true : 'role guards missing'
   })
   wt('Daily responsibility actions use DOM bindings',()=>{const src=renderDailyResponsibilities.toString();return !/onclick=|onchange=/i.test(src)?true:'inline daily-responsibility handler remains'})
-  wt('WFI work-state action buttons use direct DOM bindings',()=>{const src=bindWfiRenderedActions.toString()+renderMyWork.toString();return src.includes('.onclick=')&&src.includes('wfi-event-action')&&!src.includes('installWfiActionRouter')?'PASS':'WFI direct binding missing'})
-  wt('WFI blocker modal buttons use direct DOM bindings',()=>{const src=wfiOpenBlock.toString();return src.includes('pauseBtn.onclick')&&src.includes('blockBtn.onclick')?'PASS':'blocker modal direct bindings missing'})
+  wt('WFI work-state action buttons use direct DOM bindings',()=>{const src=bindWfiRenderedActions.toString()+renderMyWork.toString();return src.includes('.onclick=')&&src.includes('wfi-event-action')&&!src.includes('installWfiActionRouter')?true:'WFI direct binding missing'})
+  wt('WFI blocker modal buttons use direct DOM bindings',()=>{const src=wfiOpenBlock.toString();return src.includes('pauseBtn.onclick')&&src.includes('blockBtn.onclick')?true:'blocker modal direct bindings missing'})
   wt('Server-backed WFI transition client present',()=>typeof wfiRpcCall==='function'&&typeof wfiEvent==='function'&&wfiRpcCall.toString().includes('/rest/v1/rpc/')&&wfiEvent.toString().includes("wfi_session_action") ? true : 'WFI RPC transport missing')
   wt('Auto-stop events are handled locally',()=>wfiComputeLocal.toString().includes('AUTO_STOP_BLOCKED') ? true : 'AUTO_STOP_BLOCKED not handled')
   wt('Audit pagination is available',()=>typeof loadMoreAudit==='function' ? true : 'loadMoreAudit missing')
@@ -5874,11 +5879,14 @@ _scheduleSelfTest(function selfTest(){
     document.querySelectorAll('[onclick],[onchange],[oninput],[onkeydown]').forEach(el=>{
       ['onclick','onchange','oninput','onkeydown'].forEach(a=>{
         const code=el.getAttribute(a); if(!code)return
-        ;(code.match(/([A-Za-z_$][\w$]*)\s*\(/g)||[]).forEach(tok=>{
-          const fn=tok.slice(0,-1).trim()
+        // Capture any dotted receiver too (e.g. "event.stopPropagation(") so a
+        // method call on an object is never mistaken for a bare global function.
+        ;(code.match(/[\w$.]*[A-Za-z_$][\w$]*\s*\(/g)||[]).forEach(tok=>{
+          const call=tok.slice(0,-1).trim()
+          const fn=call.includes('.') ? call.slice(call.lastIndexOf('.')+1) : call
           if(['if','for','while','return','typeof','new','confirm','alert','parseInt','Number','String','JSON','Math','Date','event'].includes(fn))return
           if(/^[A-Z]/.test(fn)&&window[fn]===undefined&&fn!=='WFI')return
-          if(typeof window[fn]==='undefined'&&!/\./.test(fn)) missing.add(fn)
+          if(typeof window[fn]==='undefined'&&!call.includes('.')) missing.add(fn)
         })
       })
     })
@@ -5990,10 +5998,17 @@ _scheduleSelfTest(function selfTest(){
     return allowed===false ? true : 'TM passed canManageUsers()'
   })
   ft('authz','Blocked user cannot review',()=>{
-    const sr=S.role, sb=S.user?.blocked
-    S.role='senior'; if(S.user) S.user.blocked=true
-    const allowed=canReviewTask({plant:S.user?.plant})
-    S.role=sr; if(S.user) S.user.blocked=sb
+    // Uses a synthetic user rather than mutating S.user in place: the
+    // self-test fires on browser idle, which in practice wins the race
+    // against login (typing credentials takes far longer than an idle
+    // callback), so S.user is still null at test time far more often than
+    // not — the old "if(S.user) …" guard silently skipped setting up the
+    // blocked condition whenever that happened, always passing S.role
+    // through unchanged into canReviewTask().
+    const sr=S.role, su=S.user
+    S.role='senior'; S.user={...(su||{}), blocked:true}
+    const allowed=canReviewTask({plant:S.user.plant})
+    S.role=sr; S.user=su
     return allowed===false ? true : 'blocked user passed canReviewTask()'
   })
   ft('authz','Navigation policy is enforced, not just hidden',()=>{
@@ -6049,9 +6064,18 @@ _scheduleSelfTest(function selfTest(){
     typeof ensureXLSX==='function' && !/xlsx\.full\.min\.js/.test(
       Array.from(document.querySelectorAll('script[src]')).map(s=>s.src).join(' '))
       ? true : 'xlsx (~900KB) still downloads on every page load')
-  ft('integrity','Sidebar does not rebuild on every navigation',()=>
-    typeof syncSidebarActive==='function' && !String(sidebarSignature).includes('S.view')
-      ? true : 'sidebar DOM rebuilt on each nav')
+  ft('integrity','Sidebar does not rebuild on every navigation',()=>{
+    // Behavioural check, not source-text matching: function.toString() also
+    // returns comments, so a string search for "S.view" was tripped by the
+    // explanatory comment inside sidebarSignature() even though the actual
+    // signature never reads S.view.
+    if(typeof syncSidebarActive!=='function'||typeof sidebarSignature!=='function') return 'syncSidebarActive/sidebarSignature missing'
+    const save=S.view
+    S.view='__selftest_a__'; const sigA=sidebarSignature()
+    S.view='__selftest_b__'; const sigB=sidebarSignature()
+    S.view=save
+    return sigA===sigB ? true : 'sidebar signature changes with S.view — sidebar DOM rebuilt on each nav'
+  })
   ft('static','Removed dead functions stay removed',()=>{
     const gone=['isRealtimeHealthy','refreshPhaseCWidgets','filtAudit','getOrCreateConv']
       .filter(f=>typeof window[f]!=='undefined')
@@ -6098,7 +6122,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.5) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.6) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
