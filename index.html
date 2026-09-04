@@ -854,7 +854,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.6",
+    release: "AOS-v2.0.7",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1219,7 +1219,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.6'
+const APP_VERSION = 'v2.0.7'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -2428,6 +2428,26 @@ async function addTaskComment(taskId){
   toast('ok','Comment Added','','💬')
 }
 
+// Delete a mistakenly-assigned task (SM/AM only) — irreversible, server-first
+async function deleteTask(taskId){
+  if(!canCreateTask()){toast('warn','Not Authorized','Only SM/AM can delete tasks.','🚫');return}
+  const t=TASKS.find(x=>x.id===taskId);if(!t)return
+  if(!canEditTask(t)){toast('warn','Not Authorized','This task is outside your scope.','🚫');return}
+  const m=mb(t.assignee)
+  if(!confirm(`Delete "${t.title}"?\n\nAssigned to: ${m.name}\n\nThis permanently removes the task, its evidence and its history. This cannot be undone.\n\nUse this only if the task was assigned by mistake.`)) return
+  if(LIVE_MODE){
+    const {error}=await withTimeout(supa.from('tasks').delete().eq('id',t._dbId||taskId),12000,'TASK_DELETE')
+    if(error){toast('bad','Delete Failed',error.message,'❌');return}
+  }
+  TASKS.splice(TASKS.indexOf(t),1)
+  await writeAudit('Deleted task',t.title,`Assigned to ${m.name} — removed (mistaken assignment)`)
+  closeDrw('drwTask')
+  if(S.view==='tasks') renderTT()
+  if(S.view==='dashboard') renderDash()
+  buildSidebar()
+  toast('ok','Task Deleted',`"${t.title.substring(0,30)}" removed.`,'🗑️')
+}
+
 
 // Single source of truth for all valid status transitions
 const VALID_TRANSITIONS={
@@ -2836,10 +2856,20 @@ function c3MyToday(){
   return{tasks,open,overdue,due,review,critical,blocked,unread,messageUnread}
 }
 function c3ActionForTask(t){const action=t.status==='Assigned'?'Start':t.status==='Working'?'Open':t.status==='Review'?'Review':'Open';const onclick=t.status==='Assigned'?`updSt('${t.id}','Working','Started work')`:`openTD('${t.id}')`;return{action,onclick}}
+function toggleSmartToday(){
+  const body=document.getElementById('c3SmartBody'); if(!body)return
+  const open=body.hidden
+  body.hidden=!open
+  const chev=document.getElementById('c3SmartChev')
+  if(chev) chev.textContent=open?'▴':'▾'
+  const hint=document.getElementById('c3SmartHint')
+  if(hint) hint.textContent=open?'Tap to collapse':'Tap for details'
+}
 function renderSmartTodayMarkup(){
   const x=c3MyToday(),top=[...x.overdue,...x.due,...x.critical.filter(t=>!x.overdue.includes(t)&&!x.due.includes(t))].slice(0,5)
   const headline=S.role==='member'?(x.overdue.length?`You have ${x.overdue.length} overdue task${x.overdue.length>1?'s':''}. Start with the oldest high-priority item.`:x.review.length?`${x.review.length} of your tasks are waiting for review.`:x.due.length?`${x.due.length} task${x.due.length>1?'s':''} need attention today.`:'You are clear for today. Nice.'):(x.overdue.length?`${x.overdue.length} overdue item${x.overdue.length>1?'s':''} need management attention.`:x.review.length?`${x.review.length} task${x.review.length>1?'s':''} are waiting for a review decision.`:x.due.length?`${x.due.length} task${x.due.length>1?'s':''} due today / soon.`:'No urgent task pressure right now.')
-  return `<div class="c3-wow"><div class="c3-head"><div style="font-size:28px">🧭</div><div class="copy"><div class="title">Smart Today</div><div class="sub">${esc(headline)}</div></div><span class="c3-pill">${x.open.length} open</span></div><div class="c3-smart" style="margin-top:11px"><div class="tile"><div class="n" style="color:${x.overdue.length?'var(--bad)':'var(--good)'}">${x.overdue.length}</div><div class="l">Overdue</div></div><div class="tile"><div class="n" style="color:${x.due.length?'var(--warn)':'var(--good)'}">${x.due.length}</div><div class="l">Due Today</div></div><div class="tile"><div class="n">${x.review.length}</div><div class="l">In Review</div></div></div>${top.length?`<div class="c3-list" style="margin-top:10px">${top.map(t=>{const a=c3ActionForTask(t);return`<div class="c3-action" onclick="${a.onclick}"><div class="ico">${gEff(t)==='Overdue'?'🚨':t.status==='Review'?'🔍':'🎯'}</div><div class="copy"><div class="title">${esc(t.title)}</div><div class="meta">${esc(mb(t.assignee).name)} · ${esc(t.plant)} · ${esc(gEff(t))}</div></div><button class="b2-mini-btn" onclick="event.stopPropagation();${a.onclick}">${a.action}</button></div>`}).join('')}</div>`:`<div class="c3-explain" style="margin-top:10px">✅ Nothing urgent is competing for attention. Use the dashboard to plan ahead.</div>`}<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">${x.unread?`<button class="b2-mini-btn" onclick="nav('notifications')">🔔 ${x.unread} unread notifications</button>`:''}${x.messageUnread?`<button class="b2-mini-btn" onclick="nav('communication')">💬 ${x.messageUnread} unread messages</button>`:''}${x.blocked.length?`<button class="b2-mini-btn" onclick="nav('blocked')">🔒 ${x.blocked.length} blocked</button>`:''}</div></div>`
+  // Collapsed by default — tap the header to expand the full detail, tap again to collapse.
+  return `<div class="c3-wow"><div class="c3-head" onclick="toggleSmartToday()" style="cursor:pointer"><div style="font-size:28px">🧭</div><div class="copy"><div class="title">Smart Today</div><div class="sub">${esc(headline)}</div><div id="c3SmartHint" style="font-size:10.5px;color:var(--muted2);margin-top:2px">Tap for details</div></div><span class="c3-pill">${x.open.length} open</span><span id="c3SmartChev" style="font-size:14px;color:var(--muted);margin-left:4px">▾</span></div><div id="c3SmartBody" hidden><div class="c3-smart" style="margin-top:11px"><div class="tile"><div class="n" style="color:${x.overdue.length?'var(--bad)':'var(--good)'}">${x.overdue.length}</div><div class="l">Overdue</div></div><div class="tile"><div class="n" style="color:${x.due.length?'var(--warn)':'var(--good)'}">${x.due.length}</div><div class="l">Due Today</div></div><div class="tile"><div class="n">${x.review.length}</div><div class="l">In Review</div></div></div>${top.length?`<div class="c3-list" style="margin-top:10px">${top.map(t=>{const a=c3ActionForTask(t);return`<div class="c3-action" onclick="${a.onclick}"><div class="ico">${gEff(t)==='Overdue'?'🚨':t.status==='Review'?'🔍':'🎯'}</div><div class="copy"><div class="title">${esc(t.title)}</div><div class="meta">${esc(mb(t.assignee).name)} · ${esc(t.plant)} · ${esc(gEff(t))}</div></div><button class="b2-mini-btn" onclick="event.stopPropagation();${a.onclick}">${a.action}</button></div>`}).join('')}</div>`:`<div class="c3-explain" style="margin-top:10px">✅ Nothing urgent is competing for attention. Use the dashboard to plan ahead.</div>`}<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">${x.unread?`<button class="b2-mini-btn" onclick="nav('notifications')">🔔 ${x.unread} unread notifications</button>`:''}${x.messageUnread?`<button class="b2-mini-btn" onclick="nav('communication')">💬 ${x.messageUnread} unread messages</button>`:''}${x.blocked.length?`<button class="b2-mini-btn" onclick="nav('blocked')">🔒 ${x.blocked.length} blocked</button>`:''}</div></div></div>`
 }
 function renderDecisionDashboardMarkup(){
   const x=c3MyToday(),atRisk=x.tasks.filter(t=>t.status!=='Closed'&&(gEff(t)==='Overdue'||t.priority==='Critical'||t.status==='Review')),pressure=Math.min(100,atRisk.length*12+x.blocked.length*8),health=Math.max(0,100-pressure)
@@ -3207,6 +3237,11 @@ function openTD(id){
   const bL={Working:'▶ Start Working',Review:'📤 Submit for Review',Assigned:'↩ Return',Approved:'✅ Approve',Closed:'🏁 Close Task'}
   const tmBlocked=isBlocked()&&S.role==='member'
   const canAct=canEditTask(t)&&!tmBlocked
+  // "Update Task" (Start Working / Submit for Review / etc.) is the
+  // assignee's own workflow — it makes no sense on the screen of whoever
+  // ASSIGNED the task (they delegate and manage it via Manager Actions /
+  // Review Decision below, not by pretending to do the work themselves).
+  const isAssignee=taskMatchesCurrentUser(t)
 
   // Rejection/NeedsChanges feedback from log
   const feedback=getTaskFeedback(t)
@@ -3258,7 +3293,7 @@ function openTD(id){
         ?`<button class="btn-s" style="font-size:12px;padding:7px 13px" onclick="closeDrw('drwTask');nav('mywork')">Open My Work →</button>`
         :WFI.session?'':`<button class="btn-p" style="font-size:12px;padding:7px 13px" data-wfi-start="1" data-kind="manager_task" data-ref="${esc(t._dbId||t.id)}" data-title="${esc(t.title)}">▶️ Start Work</button>`}
     </div>`:''}
-    ${canAct&&availableNext.length?`
+    ${canAct&&availableNext.length&&isAssignee?`
     <div class="updbox">
       <div class="slbl" style="color:var(--brand)">Update Task</div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
@@ -3305,12 +3340,16 @@ function openTD(id){
           ${['Critical','High','Medium','Low'].map(p=>`<button class="${p===t.priority?'btn-p':'btn-s'}" style="font-size:12px;padding:5px 11px" onclick="changePriority('${t.id}','${p}')">${p}</button>`).join('')}
         </div>
       </div>
-      <div>
+      <div style="margin-bottom:9px">
         <div style="font-size:11.5px;color:var(--muted);margin-bottom:5px;font-weight:700">💬 Comment (notifies assignee)</div>
         <div style="display:flex;gap:7px">
           <input id="cmtInput_${t.id}" class="fi" placeholder="Type comment…" style="flex:1;font-size:12.5px;padding:8px 10px" onkeydown="if(event.key==='Enter'){addTaskComment('${t.id}');event.preventDefault()}">
           <button class="btn-s" style="font-size:12px;padding:8px 12px" onclick="addTaskComment('${t.id}')">Post</button>
         </div>
+      </div>
+      <div style="padding-top:9px;border-top:1px solid var(--line)">
+        <div style="font-size:11.5px;color:var(--muted);margin-bottom:5px;font-weight:700">Assigned by mistake?</div>
+        <button class="btn-s" style="font-size:12px;padding:7px 12px;color:var(--bad);border-color:rgba(239,68,68,.4)" onclick="deleteTask('${t.id}')">🗑️ Delete Task</button>
       </div>
     </div>`:''}
 
@@ -6122,7 +6161,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.6) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.7) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
