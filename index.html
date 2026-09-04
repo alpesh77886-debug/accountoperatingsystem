@@ -854,7 +854,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.4",
+    release: "AOS-v2.0.5",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1219,7 +1219,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.4'
+const APP_VERSION = 'v2.0.5'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -2654,8 +2654,15 @@ function safeRender(viewId, fn){
           <button class="btn-s" style="font-size:12.5px;padding:8px 14px" onclick="nav('dashboard')">← Dashboard</button>
         </div>
       </div>`
+      // Only a real, on-screen view failure should alert the user or Sentry.
+      // Self-tests probe this boundary with a synthetic throw against a
+      // viewId with no host element — that must stay silent, not leak a
+      // "Screen failed to load" toast into the live UI after every login.
+      toast('bad','Screen failed to load', detail, '⚠️')
+      try{
+        Sentry.captureMessage('Screen failed to load: '+viewId, { level: 'error', extra: { screen: viewId, detail, user: S?.user||null } })
+      }catch(_){}
     }
-    toast('bad','Screen failed to load', detail, '⚠️')
   }
   try{
     const out=fn()
@@ -6091,7 +6098,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.4) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.5) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
