@@ -854,7 +854,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.7",
+    release: "AOS-v2.0.8",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1219,7 +1219,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.7'
+const APP_VERSION = 'v2.0.8'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -3009,31 +3009,31 @@ function renderDash(){
 
   el.innerHTML=`
   <div class="krow">
-    <div class="kcard" style="background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(37,99,235,.04));border-color:rgba(59,130,246,.22)">
+    <div class="kcard" style="cursor:pointer;background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(37,99,235,.04));border-color:rgba(59,130,246,.22)" onclick="S.tf={s:'',p:'',pl:'',sort:'deadline',q:''};nav('tasks')">
       <div class="kh"><div class="kt">Total Tasks</div><div class="ki" style="background:rgba(59,130,246,.2);color:var(--brand)">📋</div></div>
       <div class="kn">${TASKS.length}</div><div class="ks up">↑ ${TASKS.filter(t=>t.status!=='Closed').length} active</div>
     </div>
-    <div class="kcard" style="background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.03));border-color:rgba(245,158,11,.22)">
+    <div class="kcard" style="cursor:pointer;background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.03));border-color:rgba(245,158,11,.22)" onclick="S.tf={s:'',p:'',pl:'',sort:'deadline',q:''};nav('tasks')">
       <div class="kh"><div class="kt">Due Today / 2d</div><div class="ki" style="background:rgba(245,158,11,.2);color:var(--warn)">📅</div></div>
       <div class="kn" style="color:var(--warn)">${d2.length}</div>
       <div class="ks ${d2.filter(t=>t.priority==='Critical').length?'dn':''}">⚠ ${d2.filter(t=>t.priority==='Critical').length||0} critical</div>
     </div>
-    <div class="kcard" style="background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.03));border-color:rgba(239,68,68,.22)">
+    <div class="kcard" style="cursor:pointer;background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.03));border-color:rgba(239,68,68,.22)" onclick="nav('escalations')">
       <div class="kh"><div class="kt">Overdue Tasks</div><div class="ki" style="background:rgba(239,68,68,.2);color:var(--bad)">⚠️</div></div>
       <div class="kn" style="color:var(--bad)">${od.length}</div>
       <div class="ks dn">↓ ${od.filter(t=>t.priority==='Critical').length||0} critical</div>
     </div>
-    <div class="kcard" style="background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.03));border-color:rgba(239,68,68,.22)">
+    <div class="kcard" style="cursor:pointer;background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.03));border-color:rgba(239,68,68,.22)" onclick="nav('blocked')">
       <div class="kh"><div class="kt">Blocked Users</div><div class="ki" style="background:rgba(239,68,68,.2);color:var(--bad)">🔒</div></div>
       <div class="kn" style="color:${blk.length?'var(--bad)':'var(--good)'}">${blk.length}</div>
       <div class="ks ${blk.length?'dn':'up'}">${blk.length?blk.length+' to unblock':'All active'}</div>
     </div>
-    <div class="kcard" style="background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(34,197,94,.03));border-color:rgba(34,197,94,.22)">
+    <div class="kcard" style="cursor:pointer;background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(34,197,94,.03));border-color:rgba(34,197,94,.22)" onclick="S.tf={s:'Closed',p:'',pl:'',sort:'deadline',q:''};nav('tasks')">
       <div class="kh"><div class="kt">Tasks Completed</div><div class="ki" style="background:rgba(34,197,94,.2);color:var(--good)">✅</div></div>
       <div class="kn" style="color:var(--good)">${cl.length}</div>
       <div class="ks up">↑ On-Time: ${ot}%</div>
     </div>
-    <div class="kcard" style="background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(168,85,247,.03));border-color:rgba(168,85,247,.22)">
+    <div class="kcard" style="cursor:pointer;background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(168,85,247,.03));border-color:rgba(168,85,247,.22)" onclick="nav('reviews')">
       <div class="kh"><div class="kt">Review Pending</div><div class="ki" style="background:rgba(168,85,247,.2);color:var(--vio)">👁️</div></div>
       <div class="kn">${rev.length}</div>
       <div class="ks">${rev.length?rev.length+' pending':'Queue clear'}</div>
@@ -3237,11 +3237,16 @@ function openTD(id){
   const bL={Working:'▶ Start Working',Review:'📤 Submit for Review',Assigned:'↩ Return',Approved:'✅ Approve',Closed:'🏁 Close Task'}
   const tmBlocked=isBlocked()&&S.role==='member'
   const canAct=canEditTask(t)&&!tmBlocked
-  // "Update Task" (Start Working / Submit for Review / etc.) is the
+  // "Update Task" (Start Working / Submit for Review / Return) is the
   // assignee's own workflow — it makes no sense on the screen of whoever
   // ASSIGNED the task (they delegate and manage it via Manager Actions /
   // Review Decision below, not by pretending to do the work themselves).
+  // "Close Task" is different: it is the manager's own finalization step
+  // after approving work (or, for a Senior Manager, an override to close
+  // a task directly) — split it out so it stays visible to whoever can
+  // act on the task, regardless of who the assignee is.
   const isAssignee=taskMatchesCurrentUser(t)
+  const canCloseOnly=canAct&&!isAssignee&&availableNext.includes('Closed')
 
   // Rejection/NeedsChanges feedback from log
   const feedback=getTaskFeedback(t)
@@ -3305,6 +3310,12 @@ function openTD(id){
         <input type="range" id="progI" min="0" max="100" value="${t.progress}" oninput="document.getElementById('pv').textContent=this.value+'%'" style="flex:1;accent-color:var(--brand)">
         <span id="pv" style="font-weight:900;font-size:12.5px;min-width:32px">${t.progress}%</span>
       </div>
+    </div>`
+    :canCloseOnly?`
+    <div class="updbox">
+      <div class="slbl" style="color:var(--brand)">Finalize</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">${t.status==='Approved'?'Approved — close it out once you have confirmed everything is complete.':'You can close this task directly.'}</div>
+      <button class="btn-p" style="font-size:12px;padding:6px 12px" onclick="updSt('${t.id}','Closed')">🏁 Close Task</button>
     </div>`
     :t.status==='Closed'?`<div style="text-align:center;padding:11px;color:var(--good);font-weight:800">🏁 Task Closed</div>`:''}
 
@@ -3904,11 +3915,11 @@ function _renderAMDash(){
     </div>
   </div>
   <div class="krow" style="grid-template-columns:repeat(5,1fr)">
-    <div class="kcard"><div class="kh"><div class="kt">Team Tasks</div></div><div class="kn">${myTasks.length}</div></div>
-    <div class="kcard"><div class="kh"><div class="kt">Due Today / 2d</div></div><div class="kn" style="color:var(--warn)">${d2.length}</div></div>
-    <div class="kcard"><div class="kh"><div class="kt">Overdue</div></div><div class="kn" style="color:var(--bad)">${od.length}</div></div>
-    <div class="kcard"><div class="kh"><div class="kt">Review Queue</div></div><div class="kn">${rev.length}</div></div>
-    <div class="kcard"><div class="kh"><div class="kt">On-Time %</div></div><div class="kn" style="color:var(--good)">${ot}%</div></div>
+    <div class="kcard" style="cursor:pointer" onclick="S.tf={s:'',p:'',pl:'',sort:'deadline',q:''};nav('tasks')"><div class="kh"><div class="kt">Team Tasks</div></div><div class="kn">${myTasks.length}</div></div>
+    <div class="kcard" style="cursor:pointer" onclick="S.tf={s:'',p:'',pl:'',sort:'deadline',q:''};nav('tasks')"><div class="kh"><div class="kt">Due Today / 2d</div></div><div class="kn" style="color:var(--warn)">${d2.length}</div></div>
+    <div class="kcard" style="cursor:pointer" onclick="nav('escalations')"><div class="kh"><div class="kt">Overdue</div></div><div class="kn" style="color:var(--bad)">${od.length}</div></div>
+    <div class="kcard" style="cursor:pointer" onclick="nav('reviews')"><div class="kh"><div class="kt">Review Queue</div></div><div class="kn">${rev.length}</div></div>
+    <div class="kcard" style="cursor:pointer" onclick="S.tf={s:'Closed',p:'',pl:'',sort:'deadline',q:''};nav('tasks')"><div class="kh"><div class="kt">On-Time %</div></div><div class="kn" style="color:var(--good)">${ot}%</div></div>
   </div>
   <div class="am-dash-grid" style="display:grid;grid-template-columns:1.2fr 1fr;gap:13px;margin-top:0">
     <div class="card">
@@ -6161,7 +6172,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.7) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.8) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
