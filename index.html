@@ -149,11 +149,12 @@ a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit;c
 .pval{font-weight:800;text-align:right;font-size:12px}
 /* OVERDUE LIST */
 .odl{display:grid;gap:0}
-.odi{display:grid;grid-template-columns:7px 1fr auto auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.odi{display:grid;grid-template-columns:7px minmax(0,1fr) auto auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
 .odi:last-child{border-bottom:0;padding-bottom:0}
+.odi>div{min-width:0}
 .odd{width:7px;height:7px;border-radius:50%;flex:none}
 .odt{font-size:12.5px;font-weight:700;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.odp{font-size:11px;color:var(--muted)}
+.odp{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .oddays{font-size:11px;font-weight:800;white-space:nowrap;color:var(--bad)}
 /* CHIPS */
 .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap}
@@ -176,9 +177,9 @@ a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit;c
 .bli{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line)}
 .bli:last-child{border-bottom:0;padding-bottom:0}
 .blic{width:29px;height:29px;border-radius:8px;background:rgba(239,68,68,.15);display:grid;place-items:center;flex:none;font-size:13px}
-.blin{flex:1}
-.blnm{font-weight:700;font-size:13px}
-.blrs{font-size:11px;color:var(--muted);margin-top:2px}
+.blin{flex:1;min-width:0}
+.blnm{font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.blrs{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bldy{font-size:11px;font-weight:800;color:var(--bad);white-space:nowrap}
 /* REMINDERS */
 .reml{display:grid;gap:6px}
@@ -854,7 +855,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.8",
+    release: "AOS-v2.0.9",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -975,25 +976,6 @@ Sentry.onLoad(function() {
             <span>Sign In</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
-        </div>
-
-        <!-- Demo Section -->
-        <div class="ibf-demo-section">
-          <div class="ibf-demo-label">⚡ Try Demo Mode</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <button onclick="enterDemoMode('senior')" class="ibf-demo-btn" style="border-color:rgba(249,115,22,.4);color:#fb923c">
-              <span style="font-size:18px">👑</span>
-              <span style="font-size:11px;font-weight:800">Sr. Manager</span>
-            </button>
-            <button onclick="enterDemoMode('asst')" class="ibf-demo-btn" style="border-color:rgba(59,130,246,.4);color:#93c5fd">
-              <span style="font-size:18px">👔</span>
-              <span style="font-size:11px;font-weight:800">Asst. Manager</span>
-            </button>
-            <button onclick="enterDemoMode('member')" class="ibf-demo-btn" style="border-color:rgba(34,197,94,.4);color:#4ade80">
-              <span style="font-size:18px">👤</span>
-              <span style="font-size:11px;font-weight:800">Team Member</span>
-            </button>
-          </div>
         </div>
 
         <!-- Mobile stats -->
@@ -1219,7 +1201,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.8'
+const APP_VERSION = 'v2.0.9'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -3410,12 +3392,12 @@ function _renderUsersBase(){
     ${S.role==='senior'?`<div class="tbr"><button class="btn-p" onclick="openOv('ovUser')">+ Add User</button>${LIVE_MODE?`<button class="btn-s" style="font-size:12.5px" onclick="refreshData()">🔄 Refresh</button>`:''}</div>`:''}
   </div>
   <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">${list.length} of ${TEAM.length} users${LIVE_MODE?' · Live from Supabase':' · Demo data'}</div>
-  <table class="tbl"><thead><tr><th>User</th><th>Role</th><th>Plant</th><th>Status</th><th>Open Tasks</th>${S.role==='senior'?'<th>Actions</th>':''}</tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="tbl" style="min-width:660px"><thead><tr><th>User</th><th>Role</th><th>Plant</th><th>Status</th><th>Open Tasks</th>${S.role==='senior'?'<th>Actions</th>':''}</tr></thead><tbody>
   ${list.map(u=>{
     const open=TASKS.filter(t=>t.assignee===u.id&&t.status!=='Closed').length
     const od2=TASKS.filter(t=>t.assignee===u.id&&gEff(t)==='Overdue').length
     return`<tr class="trr" onclick="openUD('${u.id}')"><td><div style="display:flex;align-items:center;gap:9px">${av(u,30)}<div class="ttl">${u.name}${u.email?` <span style="font-size:10.5px;color:var(--muted);">${u.email}</span>`:''}</div></div></td><td>${chip(u.role.includes('Senior')?'senior':u.role.includes('Asst')?'asst':'member',u.role)}</td><td style="color:var(--muted);font-size:12.5px">📍 ${u.plant}</td><td>${u.blocked?chip('blocked','🔒 Blocked'):chip('active','● Active')}</td><td><span style="font-weight:800">${open}</span>${od2?`<span style="color:var(--bad);font-size:11.5px;margin-left:5px">(${od2} OD)</span>`:''}</td>${S.role==='senior'?`<td onclick="event.stopPropagation()">${u.blocked?`<button class="btn-gn" style="font-size:11.5px" onclick="unblockUser('${u.id}')">🔓 Unblock</button>`:u.id!=='1'&&u.id!==S.user.id?`<button class="btn-danger" style="font-size:11.5px" onclick="startBlock('${u.id}')">🔒 Block</button>`:'<span style="color:var(--muted2)">—</span>'}</td>`:''}</tr>`}).join('')}
-  </tbody></table>
+  </tbody></table></div>
   ${!list.length?`<div class="empty"><span class="ei">👥</span><h3>No users found</h3></div>`:''}`
 }
 
@@ -3701,7 +3683,7 @@ function renderEsc(){
     </div>
   </div>`}`
 }
-function eCard(t,cls){const m=mb(t.assignee);return`<div class="escc ${cls}" onclick="openTD('${t.id}')"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div style="font-weight:800;font-size:13px;margin-bottom:2px">${t.title}</div><div style="font-size:11.5px;color:var(--muted)">${m.name} · ${t.plant}</div></div><div style="text-align:right;white-space:nowrap"><div style="font-size:19px;font-weight:900;color:${cls==='fire'?'var(--bad)':cls==='w2'?'var(--warn)':'var(--muted)'}">${dL(t.deadline)}d</div></div></div><div style="margin-top:6px;display:flex;gap:6px">${chip(t.priority,t.priority)}${chip(t.status,t.status)}</div></div>`}
+function eCard(t,cls){const m=mb(t.assignee);return`<div class="escc ${cls}" onclick="openTD('${t.id}')"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="min-width:0;flex:1"><div style="font-weight:800;font-size:13px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</div><div style="font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)} · ${esc(t.plant)}</div></div><div style="text-align:right;white-space:nowrap;flex:none"><div style="font-size:19px;font-weight:900;color:${cls==='fire'?'var(--bad)':cls==='w2'?'var(--warn)':'var(--muted)'}">${dL(t.deadline)}d</div></div></div><div style="margin-top:6px;display:flex;gap:6px">${chip(t.priority,t.priority)}${chip(t.status,t.status)}</div></div>`}
 
 // ════ BLOCKED ══════════════════════════════════
 function renderBlocked(){
@@ -3838,7 +3820,7 @@ function markNotifRead(notifId){
 function renderNotifs(){
   const el=document.getElementById('vNotifications');if(!el)return
   const unread=NOTIFS.filter(n=>n.unread),urgent=unread.filter(n=>/blocked|rejected|overdue|critical|escalat|action|required/i.test((n.title||'')+' '+(n.msg||''))),attention=unread.filter(n=>!urgent.includes(n))
-  el.innerHTML=`<div class="c3-wow"><div class="c3-head"><div style="font-size:25px">🧠</div><div class="copy"><div class="title">Smart Notifications</div><div class="sub">Important alerts are surfaced by action urgency, not just arrival time.</div></div><span class="c3-pill">${urgent.length} urgent</span></div><div class="c3-smart" style="margin-top:10px"><div class="tile"><div class="n" style="color:${urgent.length?'var(--bad)':'var(--good)'}">${urgent.length}</div><div class="l">Action Required</div></div><div class="tile"><div class="n">${attention.length}</div><div class="l">Other Unread</div></div><div class="tile"><div class="n">${NOTIFS.length}</div><div class="l">Total</div></div></div><div class="c3-explain" style="margin-top:10px"><strong>Why these are urgent:</strong> blocked accounts, rejected work, overdue/escalation events and explicit action-required notifications are promoted above ordinary informational alerts.</div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><span style="color:var(--muted);font-size:12.5px">${unread.length} unread · ${NOTIFS.length} total${LIVE_MODE?' · from Supabase':''}</span>${unread.length?`<button class="btn-s" style="font-size:12.5px" onclick="markAllRead()">✓ Mark all read</button>`:''}</div><div style="max-width:660px">${NOTIFS.length?NOTIFS.map(n=>`<div class="nc ${n.unread?'unread':''}" onclick="markNotifRead('${n.id}')"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">${esc(n.icon||'🔔')}</span><div style="flex:1"><div class="nt2">${esc(n.title)}${n.unread?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brand);margin-left:5px;vertical-align:middle"></span>':''}</div><div class="nm2">${esc(n.msg||'')}</div><div style="font-size:10.5px;color:var(--muted2);margin-top:3px">${n.time}</div></div></div></div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:20px">No notifications yet.</div>'}</div>`
+  el.innerHTML=`<div class="c3-wow"><div class="c3-head"><div style="font-size:25px">🧠</div><div class="copy"><div class="title">Smart Notifications</div><div class="sub">Important alerts are surfaced by action urgency, not just arrival time.</div></div><span class="c3-pill">${urgent.length} urgent</span></div><div class="c3-smart" style="margin-top:10px"><div class="tile"><div class="n" style="color:${urgent.length?'var(--bad)':'var(--good)'}">${urgent.length}</div><div class="l">Action Required</div></div><div class="tile"><div class="n">${attention.length}</div><div class="l">Other Unread</div></div><div class="tile"><div class="n">${NOTIFS.length}</div><div class="l">Total</div></div></div><div class="c3-explain" style="margin-top:10px"><strong>Why these are urgent:</strong> blocked accounts, rejected work, overdue/escalation events and explicit action-required notifications are promoted above ordinary informational alerts.</div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><span style="color:var(--muted);font-size:12.5px">${unread.length} unread · ${NOTIFS.length} total${LIVE_MODE?' · from Supabase':''}</span>${unread.length?`<button class="btn-s" style="font-size:12.5px" onclick="markAllRead()">✓ Mark all read</button>`:''}</div><div style="max-width:660px">${NOTIFS.length?NOTIFS.map(n=>`<div class="nc ${n.unread?'unread':''}" onclick="markNotifRead('${n.id}')"><div style="display:flex;align-items:flex-start;gap:8px"><span style="font-size:20px;flex:none">${esc(n.icon||'🔔')}</span><div style="flex:1;min-width:0"><div class="nt2">${esc(n.title)}${n.unread?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brand);margin-left:5px;vertical-align:middle"></span>':''}</div><div class="nm2">${esc(n.msg||'')}</div><div style="font-size:10.5px;color:var(--muted2);margin-top:3px">${n.time}</div></div></div></div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:20px">No notifications yet.</div>'}</div>`
 }
 
 
@@ -3924,31 +3906,31 @@ function _renderAMDash(){
   <div class="am-dash-grid" style="display:grid;grid-template-columns:1.2fr 1fr;gap:13px;margin-top:0">
     <div class="card">
       <div class="ch"><h3>👥 My Team (${myTeam.length})</h3><button class="btn-p" style="font-size:12.5px" onclick="openOv('ovTask')">+ Assign Task</button></div>
-      ${myTeam.length?`<table class="tbl"><thead><tr><th>Member</th><th>Open</th><th>Overdue</th><th>Status</th></tr></thead><tbody>
+      ${myTeam.length?`<div style="overflow-x:auto"><table class="tbl" style="min-width:420px"><thead><tr><th>Member</th><th>Open</th><th>Overdue</th><th>Status</th></tr></thead><tbody>
       ${myTeam.map(m=>{
         const mt=TASKS.filter(t=>String(t.assignee)===String(m.id)||String(t.assignee)===String(m._dbId||''))
         const mOD=mt.filter(t=>gEff(t)==='Overdue').length
         const mOpen=mt.filter(t=>t.status!=='Closed').length
         return`<tr class="trr" onclick="openUD('${m.id}')">
-          <td><div style="display:flex;align-items:center;gap:8px">${av(m,26)}<span style="font-size:13px;font-weight:700">${m.name}</span></div></td>
+          <td><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="flex:none">${av(m,26)}</span><span style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span></div></td>
           <td style="font-weight:800">${mOpen}</td>
           <td style="color:${mOD?'var(--bad)':'var(--good)'};font-weight:800">${mOD}</td>
           <td>${m.blocked?chip('blocked','🔒 Blocked'):chip('active','● Active')}</td>
         </tr>`}).join('')}
-      </tbody></table>`:`<div class="empty"><span class="ei">👤</span><h3>No team members yet</h3><p>Ask Senior Manager to assign TMs to ${myPlant}.</p></div>`}
+      </tbody></table></div>`:`<div class="empty"><span class="ei">👤</span><h3>No team members yet</h3><p>Ask Senior Manager to assign TMs to ${myPlant}.</p></div>`}
     </div>
     <div style="display:grid;gap:13px;align-content:start">
       <div class="card">
         <div class="ch"><h3>⚠️ Overdue (${od.length})</h3><span class="vall" onclick="nav('escalations')">View All</span></div>
-        ${od.length?od.slice(0,4).map(t=>{const m=mb(t.assignee);return`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="openTD('${t.id}')"><div class="odd" style="background:${PRIO_C[t.priority]};width:7px;height:7px;border-radius:50%;flex:none"></div><div style="flex:1"><div style="font-size:12.5px;font-weight:700">${t.title}</div><div style="font-size:11px;color:var(--muted)">${m.name} · ${dL(t.deadline)}d late</div></div>${chip(t.priority,t.priority)}</div>`}).join(''):`<div style="color:var(--good);font-size:13px;padding:8px 0">✅ No overdue tasks!</div>`}
+        ${od.length?od.slice(0,4).map(t=>{const m=mb(t.assignee);return`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="openTD('${t.id}')"><div class="odd" style="background:${PRIO_C[t.priority]};width:7px;height:7px;border-radius:50%;flex:none"></div><div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</div><div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)} · ${dL(t.deadline)}d late</div></div>${chip(t.priority,t.priority)}</div>`}).join(''):`<div style="color:var(--good);font-size:13px;padding:8px 0">✅ No overdue tasks!</div>`}
       </div>
       <div class="card">
         <div class="ch"><h3>👁️ Review Queue (${rev.length})</h3><span class="vall" onclick="nav('reviews')">Review All</span></div>
-        ${rev.length?rev.slice(0,3).map(t=>{const m=mb(t.assignee);return`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="openTD('${t.id}')">${av(m,24)}<div style="flex:1"><div style="font-size:12.5px;font-weight:700">${t.title}</div><div style="font-size:11px;color:var(--muted)">${m.name}</div></div><button class="btn-app" style="font-size:11.5px" onclick="event.stopPropagation();openTD('${t.id}')">Review</button></div>`}).join(''):`<div style="color:var(--good);font-size:13px;padding:8px 0">✅ Queue clear!</div>`}
+        ${rev.length?rev.slice(0,3).map(t=>{const m=mb(t.assignee);return`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="openTD('${t.id}')">${av(m,24)}<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</div><div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</div></div><button class="btn-app" style="font-size:11.5px;flex:none" onclick="event.stopPropagation();openTD('${t.id}')">Review</button></div>`}).join(''):`<div style="color:var(--good);font-size:13px;padding:8px 0">✅ Queue clear!</div>`}
       </div>
       ${blk.length?`<div class="card">
         <div class="ch"><h3>🔒 Blocked (${blk.length})</h3></div>
-        ${blk.map(u=>`<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line)">${av(u,24)}<div style="flex:1"><div style="font-size:12.5px;font-weight:700">${u.name}</div><div style="font-size:11px;color:var(--bad)">${u.blockedDays||1}d blocked — contact Sr. Manager</div></div></div>`).join('')}
+        ${blk.map(u=>`<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line)">${av(u,24)}<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.name)}</div><div style="font-size:11px;color:var(--bad);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.blockedDays||1}d blocked — contact Sr. Manager</div></div></div>`).join('')}
       </div>`:''}
     </div>
   </div>`
@@ -6172,7 +6154,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.8) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.9) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
@@ -6208,16 +6190,23 @@ if(document.readyState==='loading'){
   padding:6px 16px;
   font-size:12px;font-weight:900;
   letter-spacing:.04em;
-  color:rgba(226,232,240,.82);
   background:transparent;
   pointer-events:none;
   z-index:1;
   font-family:inherit;
 ">
-  Developed by <strong style="color:rgba(241,245,249,.96)">Alpesh Parmar</strong>
+  Developed by <strong>Alpesh Parmar</strong>
 </div>
 <!-- On mobile, footer sits above bottom nav -->
 <style>
+  /* Login screen keeps its dark background regardless of theme, so the
+     footer stays light-on-dark there by default; once the app itself is
+     showing (always white/light theme post-login per org standard), it
+     needs dark text instead or it disappears against the white content. */
+  #devFooter{color:rgba(226,232,240,.82)}
+  #devFooter strong{color:rgba(241,245,249,.96)}
+  body.theme-light #devFooter{color:rgba(15,23,42,.55)}
+  body.theme-light #devFooter strong{color:rgba(15,23,42,.85)}
   @media(max-width:680px){
     #devFooter{bottom:62px;font-size:10.5px;}
   }
