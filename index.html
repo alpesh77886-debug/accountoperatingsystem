@@ -855,7 +855,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.10",
+    release: "AOS-v2.0.11",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1201,7 +1201,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.10'
+const APP_VERSION = 'v2.0.11'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -3263,6 +3263,7 @@ function openTD(id){
     ${tmBlocked?`<div style="padding:12px;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);display:flex;align-items:center;gap:9px"><span style="font-size:22px">🔒</span><div><div style="font-weight:800;color:var(--bad);font-size:13px">Account Blocked — Read Only</div><div style="font-size:12px;color:var(--muted)">Contact your manager to unblock your account.</div></div></div>`:''}
 
     <div class="drow"><div class="dlbl">Assignee</div><div class="dval" style="display:flex;align-items:center;gap:7px">${av(m)} ${esc(m.name)} <span style="color:var(--muted);font-size:11.5px">(${esc(m.role)})</span></div></div>
+    <div class="drow"><div class="dlbl">Assigned On</div><div class="dval">🗓️ ${fD(t.created)}</div></div>
     <div class="drow"><div class="dlbl">Plant</div><div class="dval">📍 ${esc(t.plant)}</div></div>
     <div class="drow"><div class="dlbl">Deadline</div><div class="dval" style="color:${eff==='Overdue'?'var(--bad)':dl2<=2&&dl2>=0?'var(--warn)':'inherit'}">📅 ${fD(t.deadline)}${eff==='Overdue'?` <span style="font-size:11.5px">(${od2}d overdue)</span>`:dl2<=2&&dl2>=0?` <span style="font-size:11.5px">(${dl2===0?'today':dl2+'d'})</span>`:''}</div></div>
     ${t.desc?`<div class="drow"><div class="dlbl">Instructions</div><div class="dval" style="color:var(--muted);font-size:12.5px;line-height:1.5">${esc(t.desc)}</div></div>`:''}
@@ -3657,13 +3658,17 @@ function renderPlants(){
     const pt=st.filter(t=>t.plant===p),cl=pt.filter(t=>t.status==='Closed'),od=pt.filter(t=>gEff(t)==='Overdue')
     const ot=cl.length?Math.round(cl.filter(t=>t.completed&&t.completed<=t.deadline).length/cl.length*100):null
     const critical=pt.filter(t=>t.priority==='Critical'&&t.status!=='Closed').length,review=pt.filter(t=>t.status==='Review').length,blocked=TEAM.filter(u=>u.plant===p&&u.blocked).length
-    const health=ot===null?Math.max(0,100-Math.min(60,od.length*10)-Math.min(25,critical*5)):Math.max(0,Math.min(100,ot-(od.length*8)-(critical*3)))
+    // Blocked accounts reduce available capacity (same 8-point weight the
+    // Decision Dashboard already uses for this) — previously computed here
+    // but never actually subtracted, so a plant with blocked people scored
+    // no differently than one without.
+    const health=ot===null?Math.max(0,100-Math.min(60,od.length*10)-Math.min(25,critical*5)-(blocked*8)):Math.max(0,Math.min(100,ot-(od.length*8)-(critical*3)-(blocked*8)))
     return{name:p,tasks:pt,od,pct:ot,health,members:TEAM.filter(t=>t.plant===p),critical,review,blocked}
   })
   const det=S.selPlant?pd.find(p=>p.name===S.selPlant):null,avg=pd.length?Math.round(pd.reduce((a,p)=>a+p.health,0)/pd.length):0
-  el.innerHTML=`<div class="b2-card b2-card-pad" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1"><div style="font-size:16px;font-weight:900">🏭 Plant Health</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">Operational health from delivery, overdue load, critical work and review pressure.</div></div><span class="b2-risk ${avg>=80?'good':avg>=60?'warn':'bad'}">${avg}% network health</span></div></div>
+  el.innerHTML=`<div class="b2-card b2-card-pad" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1"><div style="font-size:16px;font-weight:900">🏭 Plant Health</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">Operational health from delivery, overdue load, critical work and blocked accounts.</div></div><span class="b2-risk ${avg>=80?'good':avg>=60?'warn':'bad'}">${avg}% network health</span></div></div>
   <div class="b2-health-grid" style="margin-bottom:12px">${pd.map(p=>`<div class="b2-card b2-card-pad" onclick="S.selPlant='${p.name}';renderPlants()" style="cursor:pointer;border-color:${S.selPlant===p.name?'var(--brand)':'var(--line2)'}"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">🏭</span><div style="font-size:13px;font-weight:900;flex:1">${esc(p.name)}</div><span class="b2-risk ${p.health>=80?'good':p.health>=60?'warn':'bad'}">${p.health}%</span></div><div class="b2-health-bar" style="margin-top:10px"><div class="b2-health-fill" style="width:${p.health}%;background:${p.health>=80?'var(--good)':p.health>=60?'var(--warn)':'var(--bad)'}"></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px;text-align:center"><div><div style="font-size:14px;font-weight:900">${p.tasks.length}</div><div style="font-size:9.5px;color:var(--muted)">Tasks</div></div><div><div style="font-size:14px;font-weight:900;color:${p.od.length?'var(--bad)':'var(--good)'}">${p.od.length}</div><div style="font-size:9.5px;color:var(--muted)">Overdue</div></div><div><div style="font-size:14px;font-weight:900">${p.review}</div><div style="font-size:9.5px;color:var(--muted)">Review</div></div></div></div>`).join('')}</div>
-  ${det?`<div class="b2-workspace"><div class="b2-card b2-card-pad"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div style="font-size:18px;font-weight:900;flex:1">🏭 ${esc(det.name)}</div><button class="b2-mini-btn" onclick="S.selPlant=null;renderPlants()">Close</button></div><div class="b2-health-grid">${[['Health',det.health+'%',det.health>=80?'var(--good)':det.health>=60?'var(--warn)':'var(--bad)'],['On-Time',det.pct===null?'N/A':det.pct+'%',det.pct===null?'var(--muted)':det.pct>=80?'var(--good)':det.pct>=60?'var(--warn)':'var(--bad)'],['Critical Open',det.critical,'var(--bad)'],['Blocked',det.blocked,'var(--bad)']].map(([l,v,c])=>`<div class="b2-kpi"><div class="v" style="color:${c};font-size:18px">${v}</div><div class="l">${l}</div></div>`).join('')}</div><div class="b2-section-title" style="margin-top:15px">Open Workload</div>${det.tasks.filter(t=>t.status!=='Closed').slice().sort((a,b)=>new Date(a.deadline)-new Date(b.deadline)).slice(0,10).map(t=>`<div class="b2-result" onclick="openTD('${t.id}')">${av(mb(t.assignee),27)}<div class="main"><div class="title">${esc(t.title)}</div><div class="meta">${esc(mb(t.assignee).name)} · ${fD(t.deadline)} · ${gEff(t)}</div></div>${chip(t.priority,t.priority)}</div>`).join('')||`<div style="font-size:12px;color:var(--good);padding:10px 0">No open workload.</div>`}</div><div class="b2-card b2-card-pad b2-sticky"><div class="b2-section-title">Health Explanation</div>${[['On-time delivery',det.pct===null?'N/A':det.pct+'%','Completed tasks delivered by deadline'],['Overdue pressure',det.od.length,'Each overdue task increases operational risk'],['Critical workload',det.critical,'Critical open tasks need priority attention'],['Review pressure',det.review,'Tasks waiting for management decision'],['People blocked',det.blocked,'Blocked accounts reduce available capacity']].map(([l,v,w])=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><span style="font-size:11.5px;font-weight:800">${l}</span><strong>${v}</strong></div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">${w}</div></div>`).join('')}</div></div>`:`<div class="empty"><span class="ei">👆</span><h3>Select a plant to drill down</h3><p>Health, workload, critical items and people will appear here.</p></div>`}`
+  ${det?`<div class="b2-workspace"><div class="b2-card b2-card-pad"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div style="font-size:18px;font-weight:900;flex:1">🏭 ${esc(det.name)}</div><button class="b2-mini-btn" onclick="S.selPlant=null;renderPlants()">Close</button></div><div class="b2-health-grid">${[['Health',det.health+'%',det.health>=80?'var(--good)':det.health>=60?'var(--warn)':'var(--bad)'],['On-Time',det.pct===null?'N/A':det.pct+'%',det.pct===null?'var(--muted)':det.pct>=80?'var(--good)':det.pct>=60?'var(--warn)':'var(--bad)'],['Critical Open',det.critical,'var(--bad)'],['Blocked',det.blocked,'var(--bad)']].map(([l,v,c])=>`<div class="b2-kpi"><div class="v" style="color:${c};font-size:18px">${v}</div><div class="l">${l}</div></div>`).join('')}</div><div class="b2-section-title" style="margin-top:15px">Open Workload</div>${det.tasks.filter(t=>t.status!=='Closed').slice().sort((a,b)=>new Date(a.deadline)-new Date(b.deadline)).slice(0,10).map(t=>`<div class="b2-result" onclick="openTD('${t.id}')">${av(mb(t.assignee),27)}<div class="main"><div class="title">${esc(t.title)}</div><div class="meta">${esc(mb(t.assignee).name)} · ${fD(t.deadline)} · ${gEff(t)}</div></div>${chip(t.priority,t.priority)}</div>`).join('')||`<div style="font-size:12px;color:var(--good);padding:10px 0">No open workload.</div>`}</div><div class="b2-card b2-card-pad b2-sticky"><div class="b2-section-title">Health Explanation</div>${[['On-time delivery',det.pct===null?'N/A':det.pct+'%','Completed tasks delivered by deadline'],['Overdue pressure',det.od.length,'Each overdue task increases operational risk'],['Critical workload',det.critical,'Critical open tasks need priority attention'],['Review pressure',det.review,'Tasks waiting for management decision'],['People blocked',det.blocked,'Each blocked account subtracts 8 points from health']].map(([l,v,w])=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><span style="font-size:11.5px;font-weight:800">${l}</span><strong>${v}</strong></div><div style="font-size:10.5px;color:var(--muted);margin-top:2px">${w}</div></div>`).join('')}</div></div>`:`<div class="empty"><span class="ei">👆</span><h3>Select a plant to drill down</h3><p>Health, workload, critical items and people will appear here.</p></div>`}`
 }
 // ════ ESCALATIONS ══════════════════════════════
 function renderEsc(){
@@ -6163,7 +6168,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.10) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.11) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
