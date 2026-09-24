@@ -855,7 +855,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.9",
+    release: "AOS-v2.0.10",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1201,7 +1201,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.9'
+const APP_VERSION = 'v2.0.10'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -2982,7 +2982,16 @@ function renderDash(){
     const pct=mt.length?Math.round(mt.filter(t=>t.completed&&t.completed<=t.deadline).length/mt.length*100):null
     return{...m,pct}
   }).sort((a,b)=>(b.pct??-1)-(a.pct??-1))
-  const top3=mP.slice(0,3), low3=[...mP].sort((a,b)=>a.pct-b.pct).slice(0,3)
+  // Only rank members with real completed-task evidence — a member with no
+  // closed tasks yet (pct===null) has nothing to be ranked on, and treating
+  // "no data" as if it were a score of 0 let the same handful of people
+  // (genuinely on 0%, while everyone else had no data at all) show up as
+  // both "top performer" and "needs attention" simultaneously. Top/bottom
+  // also require clearing the same good/bad thresholds already used for
+  // this app's other performance bands, so no one lands in both lists.
+  const rated=mP.filter(m=>m.pct!==null)
+  const top3=rated.filter(m=>m.pct>=80).slice(0,3)
+  const low3=rated.filter(m=>m.pct<60).sort((a,b)=>a.pct-b.pct).slice(0,3)
 
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],tv=[8,14,11,18,15,22,19]
   const W=300,H=68,PD=18,mx=Math.max(...tv)*1.2
@@ -3054,7 +3063,7 @@ function renderDash(){
 
   <div class="dr3">
     <div class="card"><div class="ch"><h3>🏆 Top Performers</h3></div>
-      <div class="perfl">${top3.length?top3.map((m,i)=>`<div class="perfi"><div class="rankn">${['🥇','🥈','🥉'][i]}</div>${av(m,26)}<div class="perfnm">${m.name}</div><div class="perfbw"><div class="perfb"><div class="perfbf" style="width:${m.pct}%;background:var(--good)"></div></div></div><div class="perfpct" style="color:var(--good)">${m.pct}%</div></div>`).join(''):`<div style="color:var(--muted);font-size:13px;padding:10px 0">Add team members to see rankings.</div>`}</div>
+      <div class="perfl">${top3.length?top3.map((m,i)=>`<div class="perfi"><div class="rankn">${['🥇','🥈','🥉'][i]}</div>${av(m,26)}<div class="perfnm">${m.name}</div><div class="perfbw"><div class="perfb"><div class="perfbf" style="width:${m.pct}%;background:var(--good)"></div></div></div><div class="perfpct" style="color:var(--good)">${m.pct}%</div></div>`).join(''):`<div style="color:var(--muted);font-size:13px;padding:10px 0">No one has hit 80%+ on-time delivery yet — needs at least one closed task.</div>`}</div>
     </div>
     <div class="card"><div class="ch"><h3>⚠️ Needs Attention</h3></div>
       <div class="perfl">${low3.length?low3.map(m=>`<div class="perfi">${av(m,26)}<div class="perfnm">${m.name}</div><div class="perfbw"><div class="perfb"><div class="perfbf" style="width:${m.pct}%;background:${m.pct<60?'var(--bad)':'var(--warn)'}"></div></div></div><div class="perfpct" style="color:${m.pct<60?'var(--bad)':'var(--warn)'}">${m.pct}%</div></div>`).join(''):`<div style="color:var(--muted);font-size:13px;padding:10px 0">All team members on track.</div>`}</div>
@@ -6154,7 +6163,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.9) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.10) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
