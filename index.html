@@ -855,7 +855,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.12",
+    release: "AOS-v2.0.14",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1201,7 +1201,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.12'
+const APP_VERSION = 'v2.0.14'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -1748,6 +1748,12 @@ async function createTask(){
     toast('warn','Not Authorized','Only Senior Manager or Assistant Manager can assign tasks.','🚫')
     return
   }
+  // A blocked manager stays fully blocked — cannot assign new work either,
+  // only the Senior Manager unblocking them restores this.
+  if(isBlocked()){
+    toast('warn','Account Blocked','Your account is blocked. Contact the Senior Manager to unblock it.','🔒')
+    return
+  }
   const title=document.getElementById('ftitle').value.trim()
   const aid=document.getElementById('fassign').value
   const dl=document.getElementById('fdeadline').value
@@ -1980,7 +1986,7 @@ async function submitReviewRequest(){
 // ════ REVIEW ACTIONS ════════════════════════════
 async function doRev(id,v){
   const t=TASKS.find(x=>x.id===id);if(!t)return
-  if(!canReviewTask(t)){toast('warn','Not Authorized',S.role==='asst'?`You can only review ${S.user.plant} plant tasks.`:'Review access denied.','🚫');return}
+  if(!canReviewTask(t)){toast('warn','Not Authorized',S.role==='asst'?(taskMatchesCurrentUser(t)?'You cannot approve your own task — only the Senior Manager can review it.':`You can only review ${S.user.plant} plant tasks.`):'Review access denied.','🚫');return}
   if(t.status!=='Review'){toast('warn','Not in Review',`Task is "${t.status}" — only Review-status tasks can be actioned.`,'⚠️');return}
   const rem=document.getElementById('rem'+id)?.value.trim()||''
   if((v==='Rejected'||v==='NeedsChanges')&&!rem){toast('warn','Remark Required',v==='Rejected'?'State rejection reason for the team member.':'Describe what changes are needed.','⚠️');return}
@@ -2313,6 +2319,7 @@ function getTaskFeedback(t){
 // Reassign task to another user (SM/AM only)
 async function reassignTask(taskId){
   if(!canCreateTask()){toast('warn','Not Authorized','Only SM/AM can reassign tasks.','🚫');return}
+  if(isBlocked()){toast('warn','Account Blocked','Your account is blocked. Contact the Senior Manager to unblock it.','🔒');return}
   const sel=document.getElementById('reassignSel_'+taskId)
   if(!sel||!sel.value){toast('warn','Select User','Choose who to reassign this task to.','⚠️');return}
   const t=TASKS.find(x=>x.id===taskId);if(!t)return
@@ -2385,6 +2392,7 @@ async function addTaskComment(taskId){
   if(comment.length>1000){toast('warn','Too Long','Comment must be under 1000 characters.','⚠️');return}
   const t=TASKS.find(x=>x.id===taskId);if(!t)return
   if(!canViewTask(t)){toast('warn','Not Authorized','This task is outside your scope.','🚫');return}
+  if(isBlocked()){toast('warn','Account Blocked','Your account is blocked. Contact the Senior Manager to unblock it.','🔒');return}
 
   const logNote=`💬 Comment: ${comment}`
   const nextLog=[...(t.log||[]),{at:new Date().toISOString().slice(0,16),actor:S.user.name,note:logNote}]
@@ -2506,7 +2514,10 @@ function canEditTask(t){
 function canReviewTask(t){
   if(S.user?.blocked) return false  // Blocked user cannot review anything
   if(S.role==='senior') return true
-  if(S.role==='asst')   return t.plant===S.user.plant
+  // AM cannot review/approve a task assigned to themselves — only Senior
+  // Manager can (separation of duties). Applies when SM assigns work
+  // directly to an AM instead of a Team Member.
+  if(S.role==='asst')   return t.plant===S.user.plant && !taskMatchesCurrentUser(t)
   return false
 }
 function canManageUsers(){
@@ -3324,6 +3335,12 @@ function openTD(id){
       </div>
     </div>`:''}
 
+    ${t.status==='Review'&&isAssignee&&S.role==='asst'?`
+    <div style="padding:12px 14px;border-radius:12px;background:rgba(148,163,184,.08);border:1px solid var(--line2);margin:8px 0">
+      <div style="font-weight:800;font-size:13px;color:var(--muted)">⏳ Waiting for Senior Manager</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:3px">This is your own task — only the Senior Manager can review and approve it.</div>
+    </div>`:''}
+
     ${canCreateTask()&&t.status!=='Closed'?`
     <div style="margin-top:4px">
       <div class="slbl" style="color:var(--vio)">Manager Actions</div>
@@ -3984,14 +4001,20 @@ function _renderTMTabs(){
 
 
 // ════ PHASE B — EXPLAINABLE WORK HEALTH ═════════
-function explainWorkHealth(tasks){
-  const cl=tasks.filter(t=>t.status==='Closed'),od=tasks.filter(t=>gEff(t)==='Overdue'),onTime=cl.filter(t=>t.completed&&t.completed<=t.deadline)
-  const base=cl.length?Math.round(onTime.length/cl.length*100):0,penalty=od.length*8,score=Math.max(0,Math.min(100,base-penalty))
-  return{score,base,penalty,onTime:onTime.length,closed:cl.length,overdue:od.length,open:tasks.filter(t=>t.status!=='Closed').length,review:tasks.filter(t=>t.status==='Review').length,formula:cl.length?`${base} on-time score − ${penalty} overdue penalty = ${score}`:'No completed tasks yet — score starts at 0'}
+// 4 points per day blocked — floors naturally via the Math.max(0,...) below,
+// so a long block cannot push the score negative, it just stays at 0.
+function blockedPenalty(u){
+  return u?.blocked?(u.blockedDays||1)*4:0
 }
-function workHealthExplainMarkup(tasks){
-  const x=explainWorkHealth(tasks)
-  return`<div class="b2-card b2-card-pad" style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:14px;font-weight:900;flex:1">🧠 Explainable Work Health</div><span class="b2-risk ${x.score>=80?'good':x.score>=60?'warn':'bad'}">${x.score}%</span><button class="b2-mini-btn" onclick="B2_HEALTH_EXPLAIN_OPEN=!B2_HEALTH_EXPLAIN_OPEN;renderPerformance()">Why?</button></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Transparent operational indicator, not a judgement of the person.</div>${B2_HEALTH_EXPLAIN_OPEN?`<div style="margin-top:11px"><div class="b2-factor"><div class="name">On-time base</div><div class="why">${x.onTime} of ${x.closed} closed tasks finished by deadline.</div><div class="val">${x.base}%</div></div><div class="b2-factor"><div class="name">Overdue penalty</div><div class="why">${x.overdue} overdue task(s) × 8 points.</div><div class="val" style="color:var(--bad)">−${x.penalty}</div></div><div class="b2-factor"><div class="name">Open workload</div><div class="why">${x.open} open task(s); context only, not secretly deducted.</div><div class="val">${x.open}</div></div><div class="b2-factor"><div class="name">In review</div><div class="why">${x.review} task(s) waiting for review.</div><div class="val">${x.review}</div></div><div style="font-size:10.5px;color:var(--muted);margin-top:8px">Formula: ${esc(x.formula)}</div></div>`:''}</div>`
+function explainWorkHealth(tasks,user){
+  const cl=tasks.filter(t=>t.status==='Closed'),od=tasks.filter(t=>gEff(t)==='Overdue'),onTime=cl.filter(t=>t.completed&&t.completed<=t.deadline)
+  const base=cl.length?Math.round(onTime.length/cl.length*100):0,odPenalty=od.length*8,blkPenalty=blockedPenalty(user),penalty=odPenalty+blkPenalty
+  const score=Math.max(0,Math.min(100,base-penalty))
+  return{score,base,penalty,odPenalty,blkPenalty,onTime:onTime.length,closed:cl.length,overdue:od.length,open:tasks.filter(t=>t.status!=='Closed').length,review:tasks.filter(t=>t.status==='Review').length,formula:cl.length?`${base} on-time score − ${odPenalty} overdue penalty${blkPenalty?` − ${blkPenalty} blocked penalty`:''} = ${score}`:'No completed tasks yet — score starts at 0'}
+}
+function workHealthExplainMarkup(tasks,user){
+  const x=explainWorkHealth(tasks,user)
+  return`<div class="b2-card b2-card-pad" style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:14px;font-weight:900;flex:1">🧠 Explainable Work Health</div><span class="b2-risk ${x.score>=80?'good':x.score>=60?'warn':'bad'}">${x.score}%</span><button class="b2-mini-btn" onclick="B2_HEALTH_EXPLAIN_OPEN=!B2_HEALTH_EXPLAIN_OPEN;renderPerformance()">Why?</button></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Transparent operational indicator, not a judgement of the person.</div>${B2_HEALTH_EXPLAIN_OPEN?`<div style="margin-top:11px"><div class="b2-factor"><div class="name">On-time base</div><div class="why">${x.onTime} of ${x.closed} closed tasks finished by deadline.</div><div class="val">${x.base}%</div></div><div class="b2-factor"><div class="name">Overdue penalty</div><div class="why">${x.overdue} overdue task(s) × 8 points.</div><div class="val" style="color:var(--bad)">−${x.odPenalty}</div></div>${x.blkPenalty?`<div class="b2-factor"><div class="name">Blocked penalty</div><div class="why">Account blocked — 4 points per day blocked.</div><div class="val" style="color:var(--bad)">−${x.blkPenalty}</div></div>`:''}<div class="b2-factor"><div class="name">Open workload</div><div class="why">${x.open} open task(s); context only, not secretly deducted.</div><div class="val">${x.open}</div></div><div class="b2-factor"><div class="name">In review</div><div class="why">${x.review} task(s) waiting for review.</div><div class="val">${x.review}</div></div><div style="font-size:10.5px;color:var(--muted);margin-top:8px">Formula: ${esc(x.formula)}</div></div>`:''}</div>`
 }
 // ── TM WORKSPACE (personal) ──────────────────────
 function _renderTMDash(){
@@ -4006,7 +4029,7 @@ function _renderTMDash(){
   const open=all.filter(t=>t.status!=='Closed')
   const critOD=od.filter(t=>t.priority==='Critical')
   const ot=cl.length?Math.round(cl.filter(t=>t.completed&&t.completed<=t.deadline).length/cl.length*100):0
-  const wh=Math.max(0,Math.min(100,ot-(od.length*8)))
+  const wh=Math.max(0,Math.min(100,ot-(od.length*8)-blockedPenalty(me)))
   const whColor=wh>=80?'var(--good)':wh>=60?'var(--warn)':'var(--bad)'
   const whLabel=wh>=80?'Excellent!':wh>=60?'On Track':'Needs Focus'
 
@@ -4020,6 +4043,11 @@ function _renderTMDash(){
       <div style="padding:14px;border-radius:13px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);margin-bottom:20px;text-align:left">
         <div style="font-size:12px;font-weight:800;color:var(--bad);margin-bottom:4px">Blocked On</div>
         <div style="font-size:12.5px;color:var(--muted)">${fDT(me.blockedAt||new Date().toISOString())}</div>
+      </div>
+      <div style="padding:14px;border-radius:13px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);margin-bottom:20px;text-align:left">
+        <div style="font-size:12px;font-weight:800;color:var(--bad);margin-bottom:4px">Work Health Score</div>
+        <div style="font-size:20px;font-weight:900;color:var(--bad)">${wh}%</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:3px">−4 points for every day blocked (${me.blockedDays||1}d so far). Score won't go below 0%.</div>
       </div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Please contact your Assistant Manager or Senior Manager to unblock your account.</div>
       <button class="btn-p" style="width:100%;font-size:14px;padding:14px" onclick="nav('communication')">💬 Contact Manager</button>
@@ -4101,7 +4129,7 @@ function _renderTMDash(){
   `
   S.tmTab=S.tmTab||'All'
   _renderTMTabs()
-  const whHost=document.getElementById('b2TMHealthExplain');if(whHost)whHost.innerHTML=workHealthExplainMarkup(all)
+  const whHost=document.getElementById('b2TMHealthExplain');if(whHost)whHost.innerHTML=workHealthExplainMarkup(all,me)
 }
 
 
@@ -4467,6 +4495,7 @@ async function openTaskDiscussion(taskId){
 function renderPerformance(){
   const el=document.getElementById('vPerformance')
   if(!el)return
+  const me=TEAM.find(t=>userMatchesCurrentUser(t))||S.user
   const all=TASKS.filter(taskMatchesCurrentUser)
   const cl=all.filter(t=>t.status==='Closed')
   const od=all.filter(t=>gEff(t)==='Overdue')
@@ -4475,7 +4504,7 @@ function renderPerformance(){
   const onTime=cl.filter(t=>t.completed&&t.completed<=t.deadline)
   const otPct=cl.length?Math.round(onTime.length/cl.length*100):0
   const avgDelay=od.length?parseFloat((od.reduce((a,t)=>a+dL(t.deadline),0)/od.length).toFixed(1)):0
-  const wh=Math.max(0,Math.min(100,otPct-(od.length*8)))
+  const wh=Math.max(0,Math.min(100,otPct-(od.length*8)-blockedPenalty(me)))
   const whColor=wh>=80?'var(--good)':wh>=60?'var(--warn)':'var(--bad)'
   const whLabel=wh>=80?'Excellent! 🌟':wh>=60?'On Track 👍':'Needs Focus ⚡'
 
@@ -6169,7 +6198,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.12) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.14) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
