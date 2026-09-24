@@ -855,7 +855,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.11",
+    release: "AOS-v2.0.12",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1201,7 +1201,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.11'
+const APP_VERSION = 'v2.0.12'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -1752,10 +1752,10 @@ async function createTask(){
   const aid=document.getElementById('fassign').value
   const dl=document.getElementById('fdeadline').value
   if(!title||!aid||!dl){toast('warn','Missing Fields','Title, assignee and deadline required.','⚠️');return}
-  // Deadline validation
+  // Deadline validation — a task cannot be due before the day it is assigned
   if(dl<TODAY){
-    const proceed=confirm(`⚠️ Deadline ${dl} is in the past. Continue anyway?`)
-    if(!proceed)return
+    toast('bad','Invalid Deadline','Deadline cannot be before today — a task cannot be due before it is assigned.','🚫')
+    return
   }
   // AM plant boundary guard
   if(S.role==='asst'){
@@ -2898,7 +2898,7 @@ const _td=new Date();_td.setDate(_td.getDate()+3)
 document.addEventListener('keydown',globalSearchKey)
 document.addEventListener('click',e=>{if(B2_SEARCH_OPEN&&!e.target.closest('#b2SearchResults')&&!e.target.closest('#gSearch'))closeGlobalSearch()})
 document.addEventListener('DOMContentLoaded',()=>{
-  const fd=document.getElementById('fdeadline');if(fd)fd.value=_td.toISOString().split('T')[0]
+  const fd=document.getElementById('fdeadline');if(fd){fd.min=TODAY;fd.value=_td.toISOString().split('T')[0]}
   hideLoader()
 })
 // Fallback: force hide after 1.5s no matter what
@@ -3266,6 +3266,7 @@ function openTD(id){
     <div class="drow"><div class="dlbl">Assigned On</div><div class="dval">🗓️ ${fD(t.created)}</div></div>
     <div class="drow"><div class="dlbl">Plant</div><div class="dval">📍 ${esc(t.plant)}</div></div>
     <div class="drow"><div class="dlbl">Deadline</div><div class="dval" style="color:${eff==='Overdue'?'var(--bad)':dl2<=2&&dl2>=0?'var(--warn)':'inherit'}">📅 ${fD(t.deadline)}${eff==='Overdue'?` <span style="font-size:11.5px">(${od2}d overdue)</span>`:dl2<=2&&dl2>=0?` <span style="font-size:11.5px">(${dl2===0?'today':dl2+'d'})</span>`:''}</div></div>
+    ${t.completed?`<div class="drow"><div class="dlbl">Completed On</div><div class="dval" style="color:${t.completed<=t.deadline?'var(--good)':'var(--bad)'}">✅ ${fD(t.completed)} <span style="font-size:11.5px">${t.completed<=t.deadline?'(on time)':`(${Math.round((new Date(t.completed)-new Date(t.deadline))/86400000)}d late)`}</span></div></div>`:''}
     ${t.desc?`<div class="drow"><div class="dlbl">Instructions</div><div class="dval" style="color:var(--muted);font-size:12.5px;line-height:1.5">${esc(t.desc)}</div></div>`:''}
 
     <div><div class="slbl">Progress</div>
@@ -6168,7 +6169,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.11) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.12) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
