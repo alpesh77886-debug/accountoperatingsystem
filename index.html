@@ -855,7 +855,7 @@ body.theme-light .nav a.on{color:#1d4ed8;}
 Sentry.onLoad(function() {
   Sentry.init({
     dsn: "https://ff44e0733ed932171a42e25388f99ebd@o4512024225579008.ingest.us.sentry.io/4512028859826176",
-    release: "AOS-v2.0.13",
+    release: "AOS-v2.0.14",
     environment: "production",
     tracesSampleRate: 1.0
   });
@@ -1201,7 +1201,7 @@ Sentry.onLoad(function() {
 // ══ SINGLE SOURCE OF TRUTH FOR RELEASE IDENTITY (P1 repair v1.9) ══
 // v1.8 shipped three conflicting version strings (v1.3.0 / v1.6.0 / v2.0).
 // Every UI surface now reads from these constants only.
-const APP_VERSION = 'v2.0.13'
+const APP_VERSION = 'v2.0.14'
 const APP_RELEASE   = 'MONARCH Forensic Hardened'
 const APP_COMPANY   = 'ISCON Balaji Foods'
 const APP_SUPA_REF  = 'wpgepyxvtezovsaqzcie'
@@ -4001,10 +4001,10 @@ function _renderTMTabs(){
 
 
 // ════ PHASE B — EXPLAINABLE WORK HEALTH ═════════
-// 5 points per day blocked — floors naturally via the Math.max(0,...) below,
+// 4 points per day blocked — floors naturally via the Math.max(0,...) below,
 // so a long block cannot push the score negative, it just stays at 0.
 function blockedPenalty(u){
-  return u?.blocked?(u.blockedDays||1)*5:0
+  return u?.blocked?(u.blockedDays||1)*4:0
 }
 function explainWorkHealth(tasks,user){
   const cl=tasks.filter(t=>t.status==='Closed'),od=tasks.filter(t=>gEff(t)==='Overdue'),onTime=cl.filter(t=>t.completed&&t.completed<=t.deadline)
@@ -4014,7 +4014,7 @@ function explainWorkHealth(tasks,user){
 }
 function workHealthExplainMarkup(tasks,user){
   const x=explainWorkHealth(tasks,user)
-  return`<div class="b2-card b2-card-pad" style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:14px;font-weight:900;flex:1">🧠 Explainable Work Health</div><span class="b2-risk ${x.score>=80?'good':x.score>=60?'warn':'bad'}">${x.score}%</span><button class="b2-mini-btn" onclick="B2_HEALTH_EXPLAIN_OPEN=!B2_HEALTH_EXPLAIN_OPEN;renderPerformance()">Why?</button></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Transparent operational indicator, not a judgement of the person.</div>${B2_HEALTH_EXPLAIN_OPEN?`<div style="margin-top:11px"><div class="b2-factor"><div class="name">On-time base</div><div class="why">${x.onTime} of ${x.closed} closed tasks finished by deadline.</div><div class="val">${x.base}%</div></div><div class="b2-factor"><div class="name">Overdue penalty</div><div class="why">${x.overdue} overdue task(s) × 8 points.</div><div class="val" style="color:var(--bad)">−${x.odPenalty}</div></div>${x.blkPenalty?`<div class="b2-factor"><div class="name">Blocked penalty</div><div class="why">Account blocked — 5 points per day blocked.</div><div class="val" style="color:var(--bad)">−${x.blkPenalty}</div></div>`:''}<div class="b2-factor"><div class="name">Open workload</div><div class="why">${x.open} open task(s); context only, not secretly deducted.</div><div class="val">${x.open}</div></div><div class="b2-factor"><div class="name">In review</div><div class="why">${x.review} task(s) waiting for review.</div><div class="val">${x.review}</div></div><div style="font-size:10.5px;color:var(--muted);margin-top:8px">Formula: ${esc(x.formula)}</div></div>`:''}</div>`
+  return`<div class="b2-card b2-card-pad" style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px"><div style="font-size:14px;font-weight:900;flex:1">🧠 Explainable Work Health</div><span class="b2-risk ${x.score>=80?'good':x.score>=60?'warn':'bad'}">${x.score}%</span><button class="b2-mini-btn" onclick="B2_HEALTH_EXPLAIN_OPEN=!B2_HEALTH_EXPLAIN_OPEN;renderPerformance()">Why?</button></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Transparent operational indicator, not a judgement of the person.</div>${B2_HEALTH_EXPLAIN_OPEN?`<div style="margin-top:11px"><div class="b2-factor"><div class="name">On-time base</div><div class="why">${x.onTime} of ${x.closed} closed tasks finished by deadline.</div><div class="val">${x.base}%</div></div><div class="b2-factor"><div class="name">Overdue penalty</div><div class="why">${x.overdue} overdue task(s) × 8 points.</div><div class="val" style="color:var(--bad)">−${x.odPenalty}</div></div>${x.blkPenalty?`<div class="b2-factor"><div class="name">Blocked penalty</div><div class="why">Account blocked — 4 points per day blocked.</div><div class="val" style="color:var(--bad)">−${x.blkPenalty}</div></div>`:''}<div class="b2-factor"><div class="name">Open workload</div><div class="why">${x.open} open task(s); context only, not secretly deducted.</div><div class="val">${x.open}</div></div><div class="b2-factor"><div class="name">In review</div><div class="why">${x.review} task(s) waiting for review.</div><div class="val">${x.review}</div></div><div style="font-size:10.5px;color:var(--muted);margin-top:8px">Formula: ${esc(x.formula)}</div></div>`:''}</div>`
 }
 // ── TM WORKSPACE (personal) ──────────────────────
 function _renderTMDash(){
@@ -4047,7 +4047,7 @@ function _renderTMDash(){
       <div style="padding:14px;border-radius:13px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);margin-bottom:20px;text-align:left">
         <div style="font-size:12px;font-weight:800;color:var(--bad);margin-bottom:4px">Work Health Score</div>
         <div style="font-size:20px;font-weight:900;color:var(--bad)">${wh}%</div>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:3px">−5 points for every day blocked (${me.blockedDays||1}d so far). Score won't go below 0%.</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:3px">−4 points for every day blocked (${me.blockedDays||1}d so far). Score won't go below 0%.</div>
       </div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Please contact your Assistant Manager or Senior Manager to unblock your account.</div>
       <button class="btn-p" style="width:100%;font-size:14px;padding:14px" onclick="nav('communication')">💬 Contact Manager</button>
@@ -6198,7 +6198,7 @@ window.renderDailyResponsibilities=renderDailyResponsibilities; window.dailyResp
 
 
 // ══════════════════════════════════════════════════════════
-// BOOT (v2.0.13) — runs only after the ENTIRE script has evaluated,
+// BOOT (v2.0.14) — runs only after the ENTIRE script has evaluated,
 // so every const/let state object above is fully initialized.
 // Nothing may start Supabase, auth, or navigation before this point.
 // ══════════════════════════════════════════════════════════
